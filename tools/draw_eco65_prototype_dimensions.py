@@ -71,6 +71,7 @@ def draw(snapshot,home,output):
         f"Enclosure clear L/W/H: {(t['closed_end_x_m']-t['entrance_x_m'])*1000:.0f} / {t['inner_width_m']*1000:.0f} / {t['inner_height_m']*1000:.0f} mm; -X entrance open\n"
         f"Base XYZ: {', '.join(f'{v*1000:.1f}' for v in scene['base_position_m'])} mm; fixed installation candidate\n"
         f"Transverse: {belt[1]:.0f} x {belt[0]:.0f} mm, surface travel {r['low_height_m']*1000:.0f}..{r['high_height_m']*1000:.0f} mm; longitudinal: {r['longitudinal_length_m']*1000:.0f} x {r['longitudinal_width_m']*1000:.0f} mm, far end {r['longitudinal_lower_height_m']*1000:.0f} mm\n"
+        f"Discharge support tray: {r['discharge_tray_length_m']*1000:.0f} x {r['longitudinal_width_m']*1000:.0f} mm; rigid support extension, not a third conveyor\n"
         "Layout reference scale 1:4; real ECO65/tool/camera unscaled. Static dimension drawing, not a task success.")
     fig.suptitle(text,fontsize=11,ha='left',x=.07)
     output=Path(output);output.parent.mkdir(parents=True,exist_ok=True)
