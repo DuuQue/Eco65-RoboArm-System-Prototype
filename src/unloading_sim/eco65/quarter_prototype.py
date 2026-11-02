@@ -75,6 +75,31 @@ def mechanism_spec(config, source_fingerprint, contact_modes):
     return spec
 
 
+def installation_support(config):
+    """Generate the real pedestal; optional offset foot retains the 140 mm plate."""
+    base=np.asarray(config['installation']['position_m'],float)
+    ch=config['chassis'];top=float(ch['center_m'][2]+ch['size_m'][2]/2)
+    size=np.array([.140,.140,base[2]-top])
+    limits=np.asarray(config['installation']['search_xyz_bounds_m'])
+    step=config['installation'].get('stepped_pedestal')
+    offset=np.asarray(step['lower_offset_xy_m'] if step else [0.,0.],float)
+    thickness=float(step['upper_plate_thickness_m']) if step else 0.
+    foot=base[:2]+offset
+    chlo=np.array(ch['center_m'])-np.array(ch['size_m'])/2
+    chhi=np.array(ch['center_m'])+np.array(ch['size_m'])/2
+    if (not np.isfinite(np.r_[base,offset,thickness]).all()
+            or np.any(base<limits[0]) or np.any(base>limits[1]) or size[2]<=0
+            or np.any(foot-size[:2]/2<chlo[:2]-1e-12)
+            or np.any(foot+size[:2]/2>chhi[:2]+1e-12)
+            or (step and (np.max(np.abs(offset))>.01 or not 0<thickness<size[2]))):
+        raise ValueError('PROTOTYPE_INSTALLATION_NOT_FULLY_SUPPORTED_OR_OUT_OF_BOUNDS')
+    if not step:
+        return [('robot_mount_plate', [*base[:2],top+size[2]/2],size)]
+    return [('robot_mount_pedestal',[*foot,top+(size[2]-thickness)/2],
+             [.140,.140,size[2]-thickness]),
+            ('robot_mount_plate',[*base[:2],base[2]-thickness/2],[.140,.140,thickness])]
+
+
 def build_scene(source, config):
     if (config['schema']!='eco65_quarter_prototype_config_v1' or config['scene_scale']!=.25
             or config['equipment_scale']!=1. or config['enable_hardware'] is not False):
@@ -118,13 +143,8 @@ def build_scene(source, config):
                      ('closed_end',[x1+th/2,0,h/2],[th,w+2*th,h])]:
         part('trailer_'+name,p,s,'prototype_enclosure',[.46,.57,.64,1.])
     ch=config['chassis'];part('prototype_chassis',ch['center_m'],ch['size_m'],'prototype_chassis',[.25,.28,.31,1.])
-    base=np.asarray(scene['base_position_m']);mount_size=np.array([.140,.140,base[2]-.150])
-    limits=np.asarray(config['installation']['search_xyz_bounds_m'])
-    chlo=np.array(ch['center_m'])-np.array(ch['size_m'])/2;chhi=np.array(ch['center_m'])+np.array(ch['size_m'])/2
-    if (np.any(base<limits[0]) or np.any(base>limits[1]) or mount_size[2]<=0
-            or np.any(base[:2]-mount_size[:2]/2<chlo[:2]) or np.any(base[:2]+mount_size[:2]/2>chhi[:2])):
-        raise ValueError('PROTOTYPE_INSTALLATION_NOT_FULLY_SUPPORTED_OR_OUT_OF_BOUNDS')
-    part('robot_mount_plate',[*base[:2],.150+mount_size[2]/2],mount_size,'mount',[.38,.4,.42,1.])
+    for name,center,size in installation_support(config):
+        part(name,center,size,'mount',[.38,.4,.42,1.])
     # The entry has no front wall; support below Z=0 does not raise the cartons.
     part('external_support_floor',[-1.1,0.,-th/2],[.6,w,th],'external_support',[.45,.45,.45,1.])
     scene['prototype']=dict(schema='eco65_quarter_reference_adaptation_v1',configuration=deepcopy(config),

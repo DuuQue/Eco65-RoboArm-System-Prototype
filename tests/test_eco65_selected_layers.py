@@ -85,3 +85,27 @@ def test_initial_state_failure_checkpoint_preserves_none_not_fake_q(tmp_path):
     task.save_checkpoint('BATCH_STOPPED')
     assert json.loads((tmp_path/'batch_progress.json').read_text())['q'] is None
     assert (tmp_path/'latest_plan.json.gz').is_file()
+
+
+def test_forward_200_keeps_equipment_and_rebuilds_supported_step():
+    from unloading_sim.eco65.quarter_prototype import installation_support
+    root=Path('configs/workcells')
+    old=yaml.safe_load((root/'eco65_lab_prototype_4c8l_fixed_candidate_v2.yaml').read_text())
+    new=yaml.safe_load((root/'eco65_lab_prototype_4c8l_forward200_v2.yaml').read_text())
+    assert np.subtract(new['installation']['position_m'],old['installation']['position_m'])==pytest.approx([.2,0,0])
+    for key in ('chassis','trailer','cartons','external_translation_m'):
+        assert new[key]==old[key]
+    receiver=deepcopy(new['receiver']);receiver['initial_height_m']=old['receiver']['initial_height_m']
+    assert receiver==old['receiver']
+    foot,plate=installation_support(new)
+    assert foot[0]=='robot_mount_pedestal' and plate[0]=='robot_mount_plate'
+    assert foot[1]==pytest.approx([-.295,.0375,.180])
+    assert foot[2]==pytest.approx([.140,.140,.060])
+    assert plate[1]==pytest.approx([-.2875,.0375,.2175])
+    assert plate[2]==pytest.approx([.140,.140,.015])
+    assert foot[1][0]+foot[2][0]/2==pytest.approx(-.225)
+    assert foot[1][2]+foot[2][2]/2==pytest.approx(plate[1][2]-plate[2][2]/2)
+    broken=deepcopy(new);broken['installation'].pop('stepped_pedestal')
+    with pytest.raises(ValueError,match='NOT_FULLY_SUPPORTED'):installation_support(broken)
+    original=installation_support(old)
+    assert len(original)==1 and original[0][2]==pytest.approx([.14,.14,.075])
