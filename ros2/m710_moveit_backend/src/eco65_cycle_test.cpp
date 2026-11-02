@@ -65,6 +65,9 @@ int main() {
     require(m710::ecoCycleNextInterval(batch,"NEXT_TARGET")=="RETURN","BATCH_NEXT_APPROACH_REMAINS_RETURN");
     batch["business_interval"]="OUTBOUND";
     require(m710::ecoCycleNextInterval(batch,"RELEASE")=="RETURN","BATCH_RELEASE_STARTS_RETURN");
+    batch["completion_goal"]="SELECTED_CARTONS_DRAINED";
+    require(m710::ecoCycleNextInterval(batch,"ATTACH")=="OUTBOUND","SELECTED_BATCH_CONTINUES_LOADED");
+    require(m710::ecoCycleNextInterval(batch,"NEXT_TARGET")=="RETURN","SELECTED_BATCH_APPROACH");
     batch["completion_goal"]="UNKNOWN";rejects([&]{m710::ecoCycleNextInterval(batch,"ATTACH");});
     auto bad=req;bad.erase("business_interval");rejects([&]{m710::ecoCycleDirection(bad);});
     bad=req;bad["j1_direction"]=-1;rejects([&]{m710::ecoCycleDirection(bad);});

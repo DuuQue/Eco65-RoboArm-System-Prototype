@@ -189,6 +189,11 @@ check('TERMINAL_CARTON_IDS_PARTITION',new Set([...worldIds,...attachedIds,...com
 check('TERMINAL_COUNTS_MATCH_VALIDATED_PLAN',worldIds.length===DATA.validation.world_cartons&&attachedIds.length===DATA.validation.attached_cartons&&completedIds.length===DATA.validation.completed_cartons);
 if(DATA.plan_summary.complete){
 if(DATA.plan_summary.completion_goal==='ALL_CARTONS_DRAINED')check('ALL_CARTONS_DRAINED_EMPTY_WORLD_AND_ATTACHMENT',completedIds.length===originalIds.size&&attachedIds.length===0&&worldIds.length===0);
+else if(DATA.plan_summary.completion_goal==='SELECTED_CARTONS_DRAINED'){
+const selected=DATA.plan_summary.requested_ids;
+check('SELECTED_CARTONS_DRAINED',same([...completedIds].sort(),[...selected].sort())&&attachedIds.length===0);
+check('UNSELECTED_CARTONS_REMAIN',same([...worldIds].sort(),[...originalIds].filter(id=>!selected.includes(id)).sort()));
+}
 else check('ONE_COMPLETE_NEXT_ONLY_ATTACHED',completedIds.length===1&&completedIds[0]===DATA.plan_summary.first_target_id&&attachedIds.length===1&&attachedIds[0]===DATA.plan_summary.next_target_id&&!completedIds.includes(DATA.plan_summary.next_target_id));
 }
 result.complete_task=DATA.plan_summary.complete?'TESTED':'PARTIAL_ONLY';

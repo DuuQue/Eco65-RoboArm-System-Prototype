@@ -477,7 +477,7 @@ def prepare_data(snapshot, plan=None, run_folder=None, preview_q=None, *, check_
             trial_ids=sorted({a['request']['task_id'] for a in all_attempts if a['request'].get('task_id')}),
             displayed_chain_scope='COMPLETE_PLAN' if plan and plan['complete'] else 'SINGLE_TRIAL_SUCCESSFUL_PREFIX_ONLY'),
         plan_summary=None if plan is None else {k:plan.get(k) for k in (
-            'schema','complete','status','completion_goal','inventory_ids','process_history','ik_posture_preference','first_target_id','next_target_id','planning_wall_s',
+            'schema','complete','status','completion_goal','inventory_ids','requested_ids','process_history','ik_posture_preference','first_target_id','next_target_id','planning_wall_s',
             'physical_execution','execution_ready','j1_direction_policy','failures',
             'transverse_process_policy','process_search','grasp_search','adopted_process','continuation_search')},
         initial_state=plan['initial_state'] if plan else previews[0]['state'],

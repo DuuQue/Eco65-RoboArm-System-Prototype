@@ -144,11 +144,16 @@ def validate_cycle(plan, snapshot, *, require_complete=True):
             or plan['physical_execution'] != 'NOT_RUN' or plan['execution_ready'] is not False):
         raise ValueError('CYCLE_IDENTITY_OR_POLICY_CHANGED')
     ids = [x['id'] for x in snapshot['scene']['boxes']]
-    batch = plan.get('completion_goal') == 'ALL_CARTONS_DRAINED'
-    if plan.get('completion_goal') not in (None, 'ALL_CARTONS_DRAINED'):
+    goal = plan.get('completion_goal')
+    batch = goal in ('ALL_CARTONS_DRAINED','SELECTED_CARTONS_DRAINED')
+    if goal not in (None, 'ALL_CARTONS_DRAINED','SELECTED_CARTONS_DRAINED'):
         raise ValueError('CYCLE_COMPLETION_GOAL_INVALID')
     if batch and plan.get('inventory_ids') != ids:
         raise ValueError('BATCH_INVENTORY_CHANGED')
+    requested = plan.get('requested_ids') if goal=='SELECTED_CARTONS_DRAINED' else ids
+    if batch and (not requested or len(set(requested))!=len(requested)
+                  or not set(requested)<=set(ids) or plan['first_target_id'] not in requested):
+        raise ValueError('BATCH_REQUESTED_INVENTORY_INVALID')
     sizes = {x['id']: x['size_m'] for x in snapshot['scene']['boxes']}
     robot = robot_for(snapshot['tool'], snapshot['scene'])
     free=plan['j1_direction_policy']==J1_FREE_POLICY
@@ -212,7 +217,7 @@ def validate_cycle(plan, snapshot, *, require_complete=True):
             raise ValueError('CYCLE_NATIVE_PARENT_CHANGED')
         seen.add(record['record_id'])
         req, result = record['native_request'], record['native_result']
-        if batch and req.get('completion_goal') != 'ALL_CARTONS_DRAINED':
+        if batch and req.get('completion_goal') != goal:
             raise ValueError('BATCH_NATIVE_GOAL_MISSING')
         policy = snapshot['native_model']['init']['collision_policy']
         if (req['clearance_policy']['source_policy'] != policy
@@ -341,10 +346,11 @@ def validate_cycle(plan, snapshot, *, require_complete=True):
         for i,target in enumerate(completed):
             if i:expected.append(('NEXT_TARGET',completed[i-1]))
             expected.extend((event,target) for event in carton_events)
-        if (not plan['complete'] or len(completed)!=len(ids) or set(completed)!=set(ids)
-                or previous['attachment'] is not None or previous['remaining_ids']
+        if (not plan['complete'] or len(completed)!=len(requested) or set(completed)!=set(requested)
+                or previous['attachment'] is not None or set(previous['remaining_ids'])!=set(ids)-set(requested)
                 or events!=expected or completed[0]!=plan['first_target_id']):
             raise ValueError('BATCH_INCOMPLETE')
+        check_unselected_cartons(plan['initial_state'],previous,set(ids)-set(requested))
     elif require_complete:
         first, second = plan['first_target_id'], plan['next_target_id']
         if (not plan['complete'] or first == second
@@ -357,3 +363,10 @@ def validate_cycle(plan, snapshot, *, require_complete=True):
                 world_cartons=len(set(x['id'] for x in previous['world']) & set(ids)),
                 attached_cartons=int(previous['attachment'] is not None),
                 completed_cartons=len(previous['completed_ids']))
+
+
+def check_unselected_cartons(initial, terminal, untouched):
+    initial_world={b['id']:b for b in initial['world']}
+    terminal_world={b['id']:b for b in terminal['world']}
+    if any(initial_world[k]!=terminal_world.get(k) for k in untouched):
+        raise ValueError('BATCH_UNSELECTED_CARTON_CHANGED')

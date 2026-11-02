@@ -73,10 +73,10 @@ inline bool ecoCycleContactPreservingLift(const CycleJson& prior,const CycleJson
 inline constexpr double kEcoCycleReverseLimit=1e-6;
 inline std::string ecoCycleNextInterval(const CycleJson& req,const std::string& event) {
   const std::string goal=req.value("completion_goal",std::string());
-  if(!goal.empty() && goal!="ALL_CARTONS_DRAINED")
+  if(!goal.empty() && goal!="ALL_CARTONS_DRAINED" && goal!="SELECTED_CARTONS_DRAINED")
     throw std::runtime_error("ECO65_CYCLE_COMPLETION_GOAL_INVALID");
   const std::string interval=req.at("business_interval");
-  if(event=="ATTACH" && (interval=="FIRST_APPROACH" || goal=="ALL_CARTONS_DRAINED"))return "OUTBOUND";
+  if(event=="ATTACH" && (interval=="FIRST_APPROACH" || goal=="ALL_CARTONS_DRAINED" || goal=="SELECTED_CARTONS_DRAINED"))return "OUTBOUND";
   return event=="RELEASE"?"RETURN":interval;
 }
 inline int ecoCycleDirection(const CycleJson& req) {

@@ -748,10 +748,13 @@ class CoupledTask(NativeTask):
                         initial_selection=selection,candidate_id=grasp['candidate_id'],error=str(error)))
         raise ValueError('FIRST_CARTON_OR_CONTINUATION_BOUNDED_CANDIDATES_EXHAUSTED')
 
+    def eligible_next_target(self, box):
+        return True
+
     def return_next(self, *, complete_carton=False):
         """Try finite next faces/heights, then let the caller revisit grasp branches."""
         drained=self.checkpoint()
-        boxes=[b for b in self.scene['boxes'] if b['id'] not in self.completed_ids
+        boxes=[b for b in self.scene['boxes'] if self.eligible_next_target(b) and b['id'] not in self.completed_ids
                and not any(x['id'] not in self.completed_ids and
                    abs(x['pose'][0]-b['pose'][0])<1e-8 and abs(x['pose'][1]-b['pose'][1])<1e-8
                    and x['pose'][2]>b['pose'][2]+1e-8 for x in self.scene['boxes'])]

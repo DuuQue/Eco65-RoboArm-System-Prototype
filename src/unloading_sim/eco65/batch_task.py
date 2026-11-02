@@ -11,18 +11,25 @@ from .coupled_task import CoupledTask
 from .coupled_state import validate_cycle
 
 ALL_CARTONS = 'ALL_CARTONS_DRAINED'
+SELECTED_CARTONS = 'SELECTED_CARTONS_DRAINED'
 
 
 class BatchTask(CoupledTask):
     completion_goal = ALL_CARTONS
 
-    def __init__(self, *args, carton_seconds=900., **kwargs):
+    def __init__(self, *args, carton_seconds=900., requested_ids=None, **kwargs):
         if not 30. <= carton_seconds <= 1800.:
             raise ValueError('BATCH_CARTON_BUDGET_OUT_OF_RANGE')
         self.carton_seconds = float(carton_seconds)
         self.process_history = []
         self.carton_budgets = []
         super().__init__(*args, **kwargs)
+        self.requested_ids = list(self.original_boxes) if requested_ids is None else list(requested_ids)
+        if (not self.requested_ids or len(set(self.requested_ids)) != len(self.requested_ids)
+                or not set(self.requested_ids) <= set(self.original_boxes)
+                or self.first_target_id not in self.requested_ids):
+            raise ValueError('BATCH_REQUESTED_INVENTORY_INVALID')
+        self.completion_goal = ALL_CARTONS if requested_ids is None else SELECTED_CARTONS
         self.batch_deadline = self.deadline
         self.begin_carton_budget()
 
@@ -34,12 +41,15 @@ class BatchTask(CoupledTask):
             start_elapsed_s=start-self.started, deadline_elapsed_s=self.deadline-self.started))
 
     def request(self, *args, **kwargs):
-        return dict(super().request(*args, **kwargs), completion_goal=ALL_CARTONS)
+        return dict(super().request(*args, **kwargs), completion_goal=self.completion_goal)
 
     def call(self, request):
         if request['op'] != 'init':
-            request = dict(request, completion_goal=ALL_CARTONS)
+            request = dict(request, completion_goal=self.completion_goal)
         return super().call(request)
+
+    def eligible_next_target(self, box):
+        return box['id'] in self.requested_ids
 
     def checkpoint(self):
         return dict(super().checkpoint(), process_history=deepcopy(self.process_history))
@@ -56,7 +66,7 @@ class BatchTask(CoupledTask):
         # A completed carton is a committed batch prefix. Failure later in the
         # batch must not silently restart the initial carton at a different q.
         try:
-            while len(self.completed_ids) < len(self.original_boxes):
+            while not set(getattr(self,'requested_ids',self.original_boxes)) <= set(self.completed_ids):
                 self.begin_carton_budget()
                 drained=self.checkpoint()
                 try:
@@ -75,7 +85,8 @@ class BatchTask(CoupledTask):
 
     def result(self, *, complete=False):
         result = super().result(complete=complete)
-        result.update(completion_goal=ALL_CARTONS, inventory_ids=list(self.original_boxes),
+        result.update(completion_goal=self.completion_goal, inventory_ids=list(self.original_boxes),
+            requested_ids=list(getattr(self,'requested_ids',self.original_boxes)),
             process_history=deepcopy(self.process_history), carton_budgets=self.carton_budgets,
             batch_deadline_elapsed_s=getattr(self,'batch_deadline',self.deadline)-self.started)
         result.pop('fingerprint')
