@@ -5,7 +5,7 @@
 </style>
 <header><div><h1>ECO65 · 连续抓放与联动机构</h1><small id="identity"></small></div><div class="badge">PLANNING_ONLY · KINEMATIC_REPLAY<br>physical_execution=NOT_RUN · execution_ready=false</div></header>
 <main><aside>
-<section id="installationPanel" hidden><h3>??? / ??????</h3><select id="installationCase"></select><button id="showInstallation">?????????</button><div id="installationNote" class="metric"></div><small>??????????????????????????</small></section>
+<section id="installationPanel" hidden><h3>安装座 / 机构实体干涉</h3><select id="installationCase"></select><button id="showInstallation">显示并聚焦实体交集</button><div id="installationNote" class="metric"></div><small>实际凸体采样检查；不是原生运动请求，不计入接受轨迹。</small></section>
 <section id="targetInspection" hidden><h3>按箱体定位 · 原生候选证据</h3><select id="diagnosticTarget" aria-label="诊断目标箱"></select><div id="targetSummary" class="metric"></div><div><button data-target-case="approach">&#x63A5;&#x8FD1;&#x78B0;&#x649E;</button><button data-target-case="collision">转运碰撞</button> <button data-target-case="direction">J1 反向</button> <button data-target-case="transfer">转运规划失败</button> <button data-target-case="budget">预算耗尽</button> <button data-target-case="contact_ik">&#x63A5;&#x89E6; IK &#x59FF;&#x6001;</button><button data-target-case="contact">成功抓取</button> <button data-target-case="extraction">成功抽离</button></div><select id="targetEvidence" aria-label="目标箱关键请求"></select><div id="targetEvidenceNote" class="metric"></div><div id="postureMetrics" class="metric"></div><div id="targetEdge" hidden><button id="targetEdgeStart">违规边起点</button> <button id="targetEdgeEnd">违规边终点</button></div><button id="targetPath" disabled>播放本请求原生路径</button><details><summary>该箱调度预算记录</summary><pre id="targetBudget"></pre></details></section>
 <section id="failureOverview"><h3>失败原因 · 同次真实记录</h3><div id="failureSummary" class="metric"></div><div id="failureCounts" class="muted"></div><button id="openFailures">定位首个几何失败</button> <button id="backToCycle">完整流程回放</button><div id="failureNavigation" hidden><select id="failureFilter" aria-label="失败类型"><option value="all">全部失败请求</option><option value="collision">有碰撞 / 间隙见证</option><option value="ik">IK 未求得解</option><option value="timeout">原生求解超时</option><option value="other">规划 / 状态检查失败</option></select><select id="failedRequest" aria-label="失败请求"></select><div class="failureNavigation"><button id="previousFailure">← 上一个失败</button><button id="nextFailure">下一个失败 →</button></div><div id="failurePosition" class="metric"></div><label>本请求内的真实拒绝样本</label><select id="failure" aria-label="拒绝样本"></select><button id="inspectFailure">显示所选拒绝姿态</button></div></section>
 <section id="perceptionPanel" hidden><h3>探针 TCP 标定 → 视觉</h3><select id="perceptionImage"></select><a id="perceptionLink" target="_blank"><img id="perceptionPhoto" style="width:100%" alt="本次仿真采集图像"></a><div id="perceptionSummary" class="metric"></div><small>图像与探针触点属于本次新布局。触点为原生 IK/FK 和几何接触观测，未运行实物接触。</small></section>
@@ -121,20 +121,20 @@ function showInstallationInterference(index){
  active=null;planner=null;$('mode').value='preview';modeChanged();
  preview(DATA.previews.findIndex(p=>p.label==='INSTALLATION_INTERFERENCE'&&Math.abs(p.height_m-row.height_m)<1e-9));
  clearDiagnosticGeometry();highlightWitness(row);applyLayers();focusFailure();
- $('diagnosis').hidden=false;$('diagnosisStatus').textContent='?????? ? ???????';
- $('diagnosisTitle').textContent='??????????';$('diagnosisOutcome').textContent='???????????????';
- $('diagnosisPose').textContent=`???? ${(row.height_m*1000).toFixed(1)} mm ? ???? q`;
+ $('diagnosis').hidden=false;$('diagnosisStatus').textContent='实体几何采样 · 非原生运动请求';
+ $('diagnosisTitle').textContent='安装座与联动机构相交';$('diagnosisOutcome').textContent='该安装位不能据此标为全行程成立';
+ $('diagnosisPose').textContent=`横带高度 ${(row.height_m*1000).toFixed(1)} mm · 保持预览 q`;
  $('diagnosisPairs').replaceChildren(...row.pair.map((id,i)=>{const p=document.createElement('p');p.className='pairRow '+(i?'pairB':'pairA');p.textContent=id;return p;}));
- $('diagnosisReason').textContent='?????????????????? AABB';
- $('diagnosisPolicy').textContent='???????';$('diagnosisContext').textContent='?????????????????????';
- $('diagnosisNote').textContent='????????? FCL ??????????????????????????';
+ $('diagnosisReason').textContent='两实际凸体具有共同内部点；不是只比较 AABB';
+ $('diagnosisPolicy').textContent='未新增碰撞豁免';$('diagnosisContext').textContent='静态几何条件诊断；不代表机器人已到达该高度';
+ $('diagnosisNote').textContent='共同内切球半径不是 FCL 穿透深度。仅检查记录列出的高度，不声称连续扫掠证明。';
  $('diagnosisRaw').textContent=JSON.stringify(row,null,2);$('selection').textContent=JSON.stringify(row,null,2);
  $('focusFailure').disabled=false;
 }
 function initInstallationDiagnostic(){
  const report=DATA.installation_stroke;if(!report)return;
- $('installationPanel').hidden=false;$('installationNote').textContent=`${report.status} ? ${report.heights_m.length} ?????`;
- $('installationCase').replaceChildren(...report.failures.map((r,i)=>new Option(`${(r.height_m*1000).toFixed(1)} mm ? ${r.pair.join(' / ')}`,i)));
+ $('installationPanel').hidden=false;$('installationNote').textContent=`${report.status} · ${report.heights_m.length} 个高度样本`;
+ $('installationCase').replaceChildren(...report.failures.map((r,i)=>new Option(`${(r.height_m*1000).toFixed(1)} mm · ${r.pair.join(' / ')}`,i)));
  $('showInstallation').disabled=!report.failures.length;
  $('showInstallation').onclick=()=>showInstallationInterference(Number($('installationCase').value));
  if(location.hash==='#installation'&&report.failures.length)showInstallationInterference(0);
