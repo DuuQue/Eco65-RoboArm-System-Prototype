@@ -73,3 +73,15 @@ def test_unselected_lower_support_must_remain_at_same_pose_and_size():
     after['world']=[]
     with pytest.raises(ValueError,match='UNSELECTED_CARTON_CHANGED'):
         check_unselected_cartons(before,after,{'lower'})
+
+
+def test_initial_state_failure_checkpoint_preserves_none_not_fake_q(tmp_path):
+    import json
+    task=BatchTask.__new__(BatchTask)
+    task.progress_path=tmp_path/'native_progress.jsonl'
+    task.current_q=None;task.completed_ids=[];task.target={'id':'upper'}
+    task.height_m=.331;task.attachment=None;task.cycle_records=[];task.started=0.
+    task.result=lambda:{'complete':False,'initial_state':None,'records':[]}
+    task.save_checkpoint('BATCH_STOPPED')
+    assert json.loads((tmp_path/'batch_progress.json').read_text())['q'] is None
+    assert (tmp_path/'latest_plan.json.gz').is_file()

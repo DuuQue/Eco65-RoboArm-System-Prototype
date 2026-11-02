@@ -100,7 +100,7 @@ class BatchTask(CoupledTask):
         # prefix and small per-carton receipts instead of many GB of copies.
         folder = self.progress_path.parent
         progress=dict(label=label,completed_ids=self.completed_ids,target_id=self.target['id'],
-            q=self.current_q.tolist(),height_m=self.height_m,
+            q=None if self.current_q is None else self.current_q.tolist(),height_m=self.height_m,
             attached_id=self.target['id'] if self.attachment is not None else None,
             records=len(self.cycle_records),planning_wall_s=perf_counter()-self.started,
             physical_execution='NOT_RUN',execution_ready=False)

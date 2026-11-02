@@ -308,7 +308,7 @@ def prepare_data(snapshot, plan=None, run_folder=None, preview_q=None, *, check_
                                    [0., 1., 0., b['pose'][1]],
                                    [0., 0., 1., b['pose'][2]],
                                    [0., 0., 0., 1.]]).tolist()) for b in scene['boxes']]
-    q0 = (plan['initial_state']['q'] if plan else preview_q)
+    q0 = (plan['initial_state']['q'] if plan and plan.get('initial_state') else preview_q)
     if q0 is None:
         q0 = scene['source_equipment_config']['task']['initial_seed_q_rad']
     def mechanism(height):
@@ -331,7 +331,12 @@ def prepare_data(snapshot, plan=None, run_folder=None, preview_q=None, *, check_
     records = plan['records'] if plan else []
     if plan:
         from unloading_sim.eco65.coupled_state import validate_cycle
-        validation = (validate_cycle(plan, snapshot, require_complete=bool(plan['complete']))
+        if plan.get('initial_state') is None:
+            if records or plan['complete']:
+                raise ValueError('MISSING_ACCEPTED_INITIAL_STATE_WITH_MOTION_OR_COMPLETION')
+            validation=dict(status='NOT_RUN_NO_ACCEPTED_INITIAL_STATE',complete=False)
+        else:
+            validation = (validate_cycle(plan, snapshot, require_complete=bool(plan['complete']))
                       if check_cycle else dict(status='NOT_RUN_EXPORT_OPTION',
                                                complete=bool(plan['complete'])))
         for original in records:
@@ -480,7 +485,7 @@ def prepare_data(snapshot, plan=None, run_folder=None, preview_q=None, *, check_
             'schema','complete','status','completion_goal','inventory_ids','requested_ids','process_history','ik_posture_preference','first_target_id','next_target_id','planning_wall_s',
             'physical_execution','execution_ready','j1_direction_policy','failures',
             'transverse_process_policy','process_search','grasp_search','adopted_process','continuation_search')},
-        initial_state=plan['initial_state'] if plan else previews[0]['state'],
+        initial_state=plan['initial_state'] if plan and plan.get('initial_state') else previews[0]['state'],
         terminal_state=plan['terminal_state'] if plan else None,
         validation=validation, duration_s=duration, times=totals, fk_fixtures=fixtures,
         physical_execution='NOT_RUN', execution_ready=False, planning_only=True,

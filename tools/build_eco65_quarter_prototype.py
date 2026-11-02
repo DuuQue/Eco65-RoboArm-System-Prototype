@@ -22,6 +22,7 @@ def build(a):
     if a.inner_width is not None:config['trailer']['inner_width_m']=a.inner_width
     if a.inner_height is not None:config['trailer']['inner_height_m']=a.inner_height
     if a.target_id is not None:config['initial_target_id']=a.target_id
+    if a.initial_height is not None:config['receiver']['initial_height_m']=a.initial_height
     out=a.output.resolve();out.relative_to(ROOT/'outputs');out.mkdir(parents=True,exist_ok=False)
     scene=build_scene(source['scene'],config)
     scene['initial_process_dispatch']=[dict(target_id=b['id'],**process_options(b,scene['boxes'],scene['boxes'],
@@ -50,6 +51,7 @@ if __name__=='__main__':
     p.add_argument('--columns',type=int);p.add_argument('--layers',type=int)
     p.add_argument('--inner-width',type=float);p.add_argument('--inner-height',type=float)
     p.add_argument('--target-id',help='Explicit representative target in the complete configured inventory')
+    p.add_argument('--initial-height',type=float,help='Actual initial belt height; does not change hardware travel')
     p.add_argument('--base',nargs=3,type=float);p.add_argument('--yaw',type=float)
     p.add_argument('--initial-q',nargs=6,type=float,default=[-1.5707963267948966,0.,0.,0.,0.,0.])
     p.add_argument('--native-asset-root',default='/work-eco65-20261015')
