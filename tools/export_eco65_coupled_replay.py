@@ -296,6 +296,14 @@ def prepare_data(snapshot, plan=None, run_folder=None, preview_q=None, *, check_
     working = [r for r in receiving_height_candidates(spec,first) if r['in_hardware_range']]
     heights = [('ACTUAL_INITIAL', initial_height),('HARDWARE_MINIMUM',spec['low_height_m']),
                ('HARDWARE_MAXIMUM',spec['high_height_m'])] + [(r['name'], r['height_m']) for r in working]
+    installation_stroke = None
+    config = scene.get('prototype', {}).get('configuration', {})
+    if config.get('installation', {}).get('stepped_pedestal'):
+        from check_eco65_installation_stroke import check
+        installation_stroke = check(config)
+        installation_stroke['source'] = 'CONVEX_INTERIOR_SAMPLE_CHECK_NOT_NATIVE_REQUEST'
+        heights += [('INSTALLATION_INTERFERENCE',h) for h in sorted({
+            row['height_m'] for row in installation_stroke['failures']})]
     previews = []
     # Full static world/cartons come from the authoritative initialized model.
     from unloading_sim.eco65.native_scene import world_objects
@@ -475,6 +483,7 @@ def prepare_data(snapshot, plan=None, run_folder=None, preview_q=None, *, check_
         preview_display_policy=policy_display(
             configured_policy=snapshot['native_model']['init']['collision_policy']),
         previews=previews, mechanisms=mechanisms, segments=segments, attempts=attempts,
+        installation_stroke=installation_stroke,
         unbound_ik_attempts=unbound_ik,
         run_report=run_report,
         native_trials=dict(root_task_id=root_task,

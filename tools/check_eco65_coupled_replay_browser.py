@@ -287,6 +287,13 @@ const heightRejected=(DATA.plan_summary.continuation_search||[]).flatMap(s=>s.ta
 if(heightRejected){selectInspectionTarget(heightRejected.target_id,false);const text=document.getElementById('targetSummary').textContent;
 check('HEIGHT_REJECTION_SEPARATES_FROZEN_BOTTOM_AND_HARDWARE_RANGE',text.includes('冻结箱底')&&DATA.receiver_hardware_range_m.every(h=>text.includes((h*1000).toFixed(0))));}
 }
+if(DATA.installation_stroke?.failures.length){
+ const row=DATA.installation_stroke.failures[0];window.replay.showInstallationInterference(0);
+ check('INSTALLATION_SAMPLE_OWNS_REAL_HEIGHT',Math.abs(state.height_m-row.height_m)<1e-9);
+ check('INSTALLATION_SAMPLE_EXACT_OBJECT_PAIR',same([...window.replay.highlightedIds].sort(),[...row.pair].sort()));
+ check('INSTALLATION_DIAGNOSIS_IS_NOT_NATIVE_MOTION',active===null&&state.business_interval==='PREVIEW_NOT_A_TASK');
+ check('INSTALLATION_WITNESS_RETAINS_POSITIVE_COMMON_INTERIOR',row.common_inscribed_radius_m>0);
+}
 result.status='PASS';
 }catch(error){result.status='FAIL';result.error=error.stack;}
 const pre=document.createElement('pre');pre.id='browser-check-result';pre.textContent=JSON.stringify(result);document.body.append(pre);

@@ -109,3 +109,19 @@ def test_forward_200_keeps_equipment_and_rebuilds_supported_step():
     with pytest.raises(ValueError,match='NOT_FULLY_SUPPORTED'):installation_support(broken)
     original=installation_support(old)
     assert len(original)==1 and original[0][2]==pytest.approx([.14,.14,.075])
+
+
+def test_forward_plate_interference_is_retained_not_hidden():
+    from check_eco65_installation_stroke import common_interior,vertices
+    from unloading_sim.eco65.quarter_prototype import installation_support
+    from unloading_sim.eco65.coupled_scene import coupled_conveyor_state
+    config=yaml.safe_load(Path('configs/workcells/eco65_lab_prototype_4c8l_forward200_v2.yaml').read_text())
+    spec=mechanism_spec(config,'test',{})
+    name,center,size=installation_support(config)[1];pose=np.eye(4);pose[:3,3]=center
+    plate=vertices(dict(size=size,pose=pose.tolist()))
+    def belt(h):
+        return vertices(next(v for v in coupled_conveyor_state(spec,h)['world_objects']
+                             if v['id']=='conveyor_transverse_prototype_belt'))
+    assert common_interior(plate,belt(.1)) is None
+    assert common_interior(plate,belt(.22))['common_inscribed_radius_m']>0
+    assert common_interior(plate,belt(.525)) is None
